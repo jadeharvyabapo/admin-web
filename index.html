@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendance System - Admin Dashboard</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <!-- TensorFlow.js and TFLite for face embedding generation (no raw image stored) -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-tflite/dist/tf-tflite.min.js"></script>
+    <!-- face-api.js for face detection so registration crop matches Android (face-only crop) -->
+    <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+</head>
+<body>
+    <!-- Login Page -->
+    <div id="loginPage" class="page">
+        <div class="login-container">
+            <h1>Admin Login</h1>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="email">Email:</label>
+                    <input type="email" id="email" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password:</label>
+                    <input type="password" id="password" required>
+                </div>
+                <button type="submit" class="btn btn-primary">Login</button>
+                <div id="loginError" class="error-message"></div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Main Dashboard -->
+    <div id="dashboardPage" class="page hidden">
+        <nav class="navbar">
+            <img src="ctulogo.png" alt="Logo" class="nav-logo" >
+            <div class="nav-brand">Attendance System Admin</div>
+            <div class="nav-links">
+                <a href="#" class="nav-link active" data-page="dashboard">Dashboard</a>
+                <a href="#" class="nav-link" data-page="employees">Employees</a>
+                <a href="#" class="nav-link" data-page="geofences">Geofences</a>
+                <a href="#" class="nav-link" data-page="attendance">Attendance</a>
+                <a href="#" class="nav-link" data-page="settings">Settings</a>
+                <button id="logoutBtn" class="btn btn-secondary">Logout</button>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <!-- Dashboard Page -->
+            <div id="dashboard" class="content-page">
+                <h1>Dashboard</h1>
+                <p class="dashboard-subtitle">Overview and quick actions</p>
+                <div class="stats-grid">
+                    <div class="stat-card">
+                        <h3>Total Employees</h3>
+                        <p id="totalEmployees">-</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Active Employees</h3>
+                        <p id="activeEmployees">-</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Today's Attendance</h3>
+                        <p id="todayAttendance">-</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Late Today</h3>
+                        <p id="lateToday">-</p>
+                    </div>
+                </div>
+                <h2 class="dashboard-actions-title">Quick Actions</h2>
+                <div class="dashboard-actions">
+                    <button type="button" id="dashboardAddEmployee" class="dashboard-action-card">
+                        <span class="dashboard-action-icon">👤</span>
+                        <span class="dashboard-action-label">Add Employee</span>
+                        <span class="dashboard-action-desc">Register a new employee and set login credentials</span>
+                    </button>
+                    <button type="button" id="dashboardAddGeofence" class="dashboard-action-card">
+                        <span class="dashboard-action-icon">📍</span>
+                        <span class="dashboard-action-label">Add Geofence</span>
+                        <span class="dashboard-action-desc">Define a workplace location for attendance</span>
+                    </button>
+                    <button type="button" id="dashboardViewAttendance" class="dashboard-action-card">
+                        <span class="dashboard-action-icon">📋</span>
+                        <span class="dashboard-action-label">View Attendance</span>
+                        <span class="dashboard-action-desc">See today's and historical attendance records</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Employees Page -->
+            <div id="employees" class="content-page hidden">
+                <div class="page-header">
+                    <h1>Employee Management</h1>
+                    <button id="addEmployeeBtn" class="btn btn-primary">Add Employee</button>
+                </div>
+                <div class="filters">
+                    <input type="text" id="employeeSearch" placeholder="Search employees..." class="search-input">
+                    <select id="departmentFilter" class="filter-select">
+                        <option value="">All Departments</option>
+                    </select>
+                    <select id="categoryFilter" class="filter-select">
+                        <option value="">All Categories</option>
+                        <option value="organic">Organic</option>
+                        <option value="part-time">Part-Time</option>
+                    </select>
+                </div>
+                <div class="table-container">
+                    <table id="employeesTable" class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Employee ID</th>
+                                <th>Name</th>
+                                <th>Role</th>
+                                <th>Category</th>
+                                <th>Department</th>
+                                <th>Mode of Instruction</th>
+                                <th>Geofence</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="employeesTableBody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Geofences Page -->
+            <div id="geofences" class="content-page hidden">
+                <div class="page-header">
+                    <h1>Geofence Management</h1>
+                    <button id="addGeofenceBtn" class="btn btn-primary">Add Geofence</button>
+                </div>
+                <div class="table-container">
+                    <table id="geofencesTable" class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Latitude</th>
+                                <th>Longitude</th>
+                                <th>Radius (meters)</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="geofencesTableBody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Attendance Page -->
+            <div id="attendance" class="content-page hidden">
+                <div class="page-header">
+                    <h1>Attendance Monitoring</h1>
+                </div>
+                <div class="filters">
+
+                    <input type="text" id="employeeFilter" placeholder="Enter Employee ID"  class="filter-input">
+                    <button id="filterButton">Search</button>
+
+                    <input type="date" id="attendanceDate" class="filter-input">
+                    <select id="attendanceDepartmentFilter" class="filter-select">
+                        <option value="">All Departments</option>
+                    </select>
+                    <select id="attendanceCategoryFilter" class="filter-select">
+                        <option value="">All Categories</option>
+                        <option value="ORGANIC">Organic</option>
+                        <option value="PART_TIMER">Part-Time</option>
+                    </select>
+                    <button id="refreshAttendanceBtn" class="btn btn-secondary">Refresh</button>
+                </div>
+                <div class="table-container">
+                    <table id="attendanceTable" class="data-table">
+                        <thead>
+                            <tr>
+                                <th>Employee ID</th>
+                                <th>Name</th>
+                                <th>Date</th>
+                                <th>Mode of Instruction</th>
+                                <th>Morning</th>
+                                <th>Afternoon</th>
+                                <th>Overtime</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="attendanceTableBody">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Settings Page -->
+            <div id="settings" class="content-page hidden">
+                <h1>Settings</h1>
+                <div class="settings-section">
+                    <h2>Test Mode</h2>
+                    <div class="setting-item">
+                        <label>
+                            <input type="checkbox" id="testModeEnabled">
+                            Enable Test Mode
+                        </label>
+                        <p class="setting-description">When enabled, mobile app will use mock time instead of real time</p>
+                    </div>
+                    <div class="setting-item" id="mockTimeSetting">
+                        <label for="mockTime">Mock Time:</label>
+                        <input type="datetime-local" id="mockTime" class="setting-input">
+                        <button id="setMockTimeBtn" class="btn btn-primary">Set Mock Time</button>
+                        <p class="setting-description">Set a custom time for testing attendance behavior</p>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Employee Modal -->
+    <div id="employeeModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="employeeModalTitle">Add Employee</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <form id="employeeForm">
+                <input type="hidden" id="employeeIdEdit">
+                <div class="form-group">
+                    <label for="empEmployeeId">Employee ID:</label>
+                    <input type="text" id="empEmployeeId" placeholder="e.g. EMP001" required>
+                </div>
+                <div class="form-group" id="empUsernameGroup">
+                    <label for="empUsername">Username (email for login):</label>
+                    <input type="email" id="empUsername" placeholder="employee@example.com">
+                    <p class="setting-description" style="margin-top: 5px; font-size: 12px; color: #666;">Used to sign in on the app. Required when adding; leave empty when editing to keep existing.</p>
+                </div>
+                <div class="form-group" id="empPasswordGroup">
+                    <label for="empPassword">Password:</label>
+                    <input type="password" id="empPassword" placeholder="••••••••" autocomplete="new-password">
+                    <p class="setting-description" style="margin-top: 5px; font-size: 12px; color: #666;">Required when adding a new employee. Leave empty when editing.</p>
+                </div>
+                <div class="form-group">
+                    <label for="empName">Name:</label>
+                    <input type="text" id="empName" required>
+                </div>
+                <div class="form-group">
+                    <label for="empRole">Role:</label>
+                    <select id="empRole" required>
+                        <option value="staff">Staff</option>
+                        <option value="faculty">Faculty</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="empCategory">Category:</label>
+                    <select id="empCategory">
+                        <option value="">None (for staff)</option>
+                        <option value="organic">Organic</option>
+                        <option value="part-time">Part-Time</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="empPosition">Position:</label>
+                    <input type="text" id="empPosition">
+                </div>
+                <div class="form-group">
+                    <label for="empDepartment">Department:</label>
+                    <input type="text" id="empDepartment" required>
+                </div>
+                <div class="form-group">
+                    <label for="empAdminFunction">Administrative Function:</label>
+                    <input type="text" id="empAdminFunction">
+                </div>
+                <div class="form-group" id="modeOfInstructionGroup">
+                    <label for="empModeOfInstruction">Mode of Instruction:</label>
+                    <select id="empModeOfInstruction">
+                        <option value="">None</option>
+                        <option value="FacetoFace">Face-to-Face</option>
+                        <option value="Online">Work from Home</option>
+                    </select>
+                    <p class="setting-description" style="margin-top: 5px; font-size: 12px; color: #666;">Select Face-to-Face for on-site work or Work from Home for remote work (allows lock-in regardless of geofence)</p>
+                </div>
+                <div class="form-group" id="geofenceSelectionGroup">
+                    <label for="empGeofence">Geofence Location:</label>
+                    <select id="empGeofence">
+                        <option value="">None</option>
+                    </select>
+                    <p class="setting-description" style="margin-top: 5px; font-size: 12px; color: #666;">Select the geofence location for this employee. Not required for Work from Home mode.</p>
+                </div>
+                <div class="form-group">
+                    <label for="empFacePhoto">Face Photo (for login verification):</label>
+                    <input type="file" id="empFacePhoto" accept="image/jpeg,image/png,image/jpg">
+                    <p class="setting-description" style="margin-top: 5px; font-size: 12px; color: #666;">Upload a clear front-facing photo. The face is detected and cropped automatically (same as app verification). Only the embedding is stored—no raw image. If verification fails, re-upload a clear face photo.</p>
+                    <div id="empFacePhotoPreview" class="face-photo-preview" style="margin-top: 8px; display: none;">
+                        <img id="empFacePhotoPreviewImg" src="" alt="Preview" style="max-width: 120px; max-height: 120px; border-radius: 8px; border: 1px solid #ddd;">
+                        <span id="empFacePhotoCurrentLabel" style="font-size: 12px; color: #666;"></span>
+                    </div>
+                </div>
+                <div class="modal-actions">
+                    <button type="submit" class="btn btn-primary">Save</button>
+                    <button type="button" class="btn btn-secondary modal-close">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Geofence Modal -->
+    <div id="geofenceModal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="geofenceModalTitle">Add Geofence</h2>
+                <button class="modal-close">&times;</button>
+            </div>
+            <form id="geofenceForm">
+                <input type="hidden" id="geofenceIdEdit">
+                <div class="form-group">
+                    <label for="geoName">Name:</label>
+                    <input type="text" id="geoName" required>
+                </div>
+                <div class="form-group">
+                    <label for="geoLatitude">Latitude:</label>
+                    <input type="number" id="geoLatitude" step="0.000001" required>
+                </div>
+                <div class="form-group">
+                    <label for="geoLongitude">Longitude:</label>
+                    <input type="number" id="geoLongitude" step="0.000001" required>
+                </div>
+                <div class="form-group">
+                    <label for="geoRadius">Radius (meters):</label>
+                    <input type="number" id="geoRadius" step="0.1" min="1" required>
+                </div>
+                <div class="modal-actions">
+                    <button type="submit" class="btn btn-primary">Save</button>
+                    <button type="button" class="btn btn-secondary modal-close">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script type="module" src="js/firebase-config.js"></script>
+    <script type="module" src="js/debug-collections.js"></script>
+    <script type="module" src="js/auth.js"></script>
+    <script type="module" src="js/utils.js"></script>
+    <script type="module" src="js/dashboard.js"></script>
+    <script type="module" src="js/employees.js"></script>
+    <script type="module" src="js/geofences.js"></script>
+    <script type="module" src="js/attendance.js"></script>
+    <script type="module" src="js/settings.js"></script>
+    <script type="module" src="js/main.js"></script>
+</body>
+</html>
+
