@@ -2,7 +2,7 @@
  * Employee Management Module
  */
 import { db, createEmployeeAuthUser } from './firebase-config.js';
-import { collection, getDocs, doc, updateDoc, setDoc } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
+import { collection, getDocs, doc, updateDoc, setDoc, deleteDoc, addDoc } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 import { showModal, hideModal, showNotification } from './utils.js';
 import { generateFaceEmbedding, preloadFaceEmbeddingModels } from './face-embedding.js';
 
@@ -164,6 +164,7 @@ function renderEmployees() {
             <td>${geofenceDisplay}</td>
             <td>
                 <button class="btn btn-primary btn-small" onclick="window.editEmployee('${emp.id}')">Edit</button>
+                <button class="btn btn-danger btn-small" onclick="window.deleteEmployee('${emp.id}')">Delete</button>
             </td>
         `;
         tbody.appendChild(row);
@@ -204,12 +205,13 @@ window.editEmployee = async function(employeeId) {
     document.getElementById('empRole').value = emp.role || 'staff';
     document.getElementById('empCategory').value = emp.category || '';
     document.getElementById('empPosition').value = emp.position || '';
+    document.getElementById('empCollege').value = emp.college || '';
     document.getElementById('empDepartment').value = emp.department || '';
     document.getElementById('empAdminFunction').value = emp.administrativeFunction || '';
     document.getElementById('empModeOfInstruction').value = emp.modeOfInstruction || '';
     document.getElementById('empGeofence').value = emp.geofenceId || '';
     document.getElementById('empUsername').value = emp.email || emp.username || '';
-    document.getElementById('empUsername').readOnly = true;
+    document.getElementById('empUsername').readOnly = false;
     document.getElementById('empPassword').value = '';
     document.getElementById('empPassword').required = false;
     document.getElementById('empPasswordGroup').style.display = 'none';
@@ -234,6 +236,23 @@ window.editEmployee = async function(employeeId) {
     
     showModal('employeeModal');
     preloadFaceEmbeddingModels();
+};
+
+/**
+ * Delete employee (Firestore document only; Firebase Auth user remains until removed in Firebase Console)
+ */
+window.deleteEmployee = async function(employeeId) {
+    if (!confirm('Are you sure you want to delete this employee? Their Firestore record will be removed. The login account (Firebase Authentication) must be removed separately in Firebase Console if needed.')) {
+        return;
+    }
+    try {
+        await deleteDoc(doc(db, 'Employees', employeeId));
+        showNotification('Employee deleted successfully');
+        loadEmployees();
+    } catch (error) {
+        console.error('Error deleting employee:', error);
+        showNotification('Failed to delete employee: ' + (error?.message || error), 'error');
+    }
 };
 
 /**
@@ -281,6 +300,7 @@ document.getElementById('employeeForm')?.addEventListener('submit', async (e) =>
         role: document.getElementById('empRole').value,
         category: document.getElementById('empCategory').value || null,
         position: document.getElementById('empPosition').value || null,
+        college: document.getElementById('empCollege').value || null,
         department: document.getElementById('empDepartment').value,
         administrativeFunction: document.getElementById('empAdminFunction').value || null,
         modeOfInstruction: document.getElementById('empModeOfInstruction').value || null,
@@ -301,10 +321,10 @@ document.getElementById('employeeForm')?.addEventListener('submit', async (e) =>
     
     try {
         if (employeeId) {
-            // Edit: no auth creation; keep existing User UID and email
+            // Edit: keep existing User UID; allow updating email (saved to Firestore; Firebase Auth login email must be changed in Firebase Console if needed)
             const emp = employeesData.find(e => e.id === employeeId);
             if (emp?.['User UID']) employeeData['User UID'] = emp['User UID'];
-            if (emp?.email) employeeData.email = emp.email;
+            employeeData.email = username || emp?.email || '';
         } else {
             // Add: require username and password, create Firebase Auth user, set User UID
             if (!username || !password) {

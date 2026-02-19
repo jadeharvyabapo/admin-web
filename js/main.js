@@ -9,6 +9,7 @@ import { loadEmployees } from './employees.js';
 import { preloadFaceEmbeddingModels } from './face-embedding.js';
 import { loadGeofences } from './geofences.js';
 import { loadAttendance } from './attendance.js';
+import { loadReports } from './reports.js';
 import { loadSettings } from './settings.js';
 
 // Setup modal close handlers
@@ -76,6 +77,9 @@ function navigateToPage(pageName) {
             break;
         case 'attendance':
             loadAttendance();
+            break;
+        case 'reports':
+            loadReports();
             break;
         case 'settings':
             loadSettings();

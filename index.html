@@ -10,6 +10,8 @@
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-tflite/dist/tf-tflite.min.js"></script>
     <!-- face-api.js for face detection so registration crop matches Android (face-only crop) -->
     <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+    <!-- jsPDF for PDF generation -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 </head>
 <body>
     <!-- Login Page -->
@@ -41,6 +43,7 @@
                 <a href="#" class="nav-link" data-page="employees">Employees</a>
                 <a href="#" class="nav-link" data-page="geofences">Geofences</a>
                 <a href="#" class="nav-link" data-page="attendance">Attendance</a>
+                <a href="#" class="nav-link" data-page="reports">Reports</a>
                 <a href="#" class="nav-link" data-page="settings">Settings</a>
                 <button id="logoutBtn" class="btn btn-secondary">Logout</button>
             </div>
@@ -190,6 +193,49 @@
                 </div>
             </div>
 
+            <!-- Reports Page -->
+            <div id="reports" class="content-page hidden">
+                <div class="page-header">
+                    <h1>Reports & DTR</h1>
+                </div>
+                
+                <!-- DTR Download Section -->
+                <div class="settings-section" style="margin-bottom: 30px;">
+                    <h2>Download DTR (Daily Time Record)</h2>
+                    <div class="form-group">
+                        <label for="dtrEmployeeSelect">Select Employee:</label>
+                        <select id="dtrEmployeeSelect" class="filter-select" style="width: 100%; max-width: 400px;">
+                            <option value="">Loading employees...</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="dtrStartDate">Start Date:</label>
+                        <input type="date" id="dtrStartDate" class="filter-input" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="dtrEndDate">End Date:</label>
+                        <input type="date" id="dtrEndDate" class="filter-input" required>
+                    </div>
+                    <button id="downloadDtrBtn" class="btn btn-primary">Download DTR PDF</button>
+                </div>
+                
+                <!-- Attendance Reports Section -->
+                <div class="settings-section">
+                    <h2>Attendance Reports (Absents, Late, Undertime)</h2>
+                    <div class="form-group">
+                        <label for="reportEmployeeSelect">Select Employee:</label>
+                        <select id="reportEmployeeSelect" class="filter-select" style="width: 100%; max-width: 400px;">
+                            <option value="">Loading employees...</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="reportMonth">Select Month:</label>
+                        <input type="month" id="reportMonth" class="filter-input" required>
+                    </div>
+                    <button id="generateReportBtn" class="btn btn-primary">Generate Report PDF</button>
+                </div>
+            </div>
+
             <!-- Settings Page -->
             <div id="settings" class="content-page hidden">
                 <h1>Settings</h1>
@@ -258,6 +304,18 @@
                 <div class="form-group">
                     <label for="empPosition">Position:</label>
                     <input type="text" id="empPosition">
+                </div>
+                <div class="form-group">
+                    <label for="empCollege">College:</label>
+                    <select id="empCollege" required>
+                        <option value="">Select College</option>
+                        <option value="CoEd">CoEd</option>
+                        <option value="CTM">CTM</option>
+                        <option value="CVM">CVM</option>
+                        <option value="IABE">IABE</option>
+                        <option value="CA">CA</option>
+                        <option value="Admin">Admin</option>
+                    </select>
                 </div>
                 <div class="form-group">
                     <label for="empDepartment">Department:</label>
@@ -341,6 +399,7 @@
     <script type="module" src="js/employees.js"></script>
     <script type="module" src="js/geofences.js"></script>
     <script type="module" src="js/attendance.js"></script>
+    <script type="module" src="js/reports.js"></script>
     <script type="module" src="js/settings.js"></script>
     <script type="module" src="js/main.js"></script>
 </body>
