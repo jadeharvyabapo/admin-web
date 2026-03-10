@@ -1,7 +1,8 @@
 /**
  * Employee Management Module
  */
-import { db, createEmployeeAuthUser } from './firebase-config.js';
+import { db, createEmployeeAuthUser, auth } from './firebase-config.js';
+import { sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-auth.js";
 import { collection, getDocs, doc, updateDoc, setDoc, deleteDoc, addDoc } from "https://www.gstatic.com/firebasejs/12.7.0/firebase-firestore.js";
 import { showModal, hideModal, showNotification } from './utils.js';
 import { generateFaceEmbedding, preloadFaceEmbeddingModels } from './face-embedding.js';
@@ -230,6 +231,20 @@ window.editEmployee = async function(employeeId) {
         previewImg.src = '';
         currentLabel.textContent = '';
     }
+
+    // Enable reset password button for existing employee (only if email is present)
+    const resetBtn = document.getElementById('resetPasswordBtn');
+    if (resetBtn) {
+        if (emp.email) {
+            resetBtn.style.display = 'inline-block';
+            resetBtn.disabled = false;
+            resetBtn.dataset.email = emp.email;
+        } else {
+            resetBtn.style.display = 'none';
+            resetBtn.disabled = true;
+            resetBtn.removeAttribute('data-email');
+        }
+    }
     
     // Show/hide mode of instruction based on role
     updateModeOfInstructionVisibility();
@@ -271,6 +286,12 @@ document.getElementById('addEmployeeBtn')?.addEventListener('click', async () =>
     document.getElementById('empPasswordGroup').style.display = 'block';
     document.getElementById('empFacePhotoPreview').style.display = 'none';
     document.getElementById('empFacePhotoPreviewImg').src = '';
+    const resetBtn = document.getElementById('resetPasswordBtn');
+    if (resetBtn) {
+        resetBtn.style.display = 'none';
+        resetBtn.disabled = true;
+        resetBtn.removeAttribute('data-email');
+    }
     updateModeOfInstructionVisibility();
     showModal('employeeModal');
     preloadFaceEmbeddingModels();
@@ -396,3 +417,29 @@ function updateModeOfInstructionVisibility() {
 document.getElementById('employeeSearch')?.addEventListener('input', renderEmployees);
 document.getElementById('departmentFilter')?.addEventListener('change', renderEmployees);
 document.getElementById('categoryFilter')?.addEventListener('change', renderEmployees);
+
+// Reset password handler (sends Firebase Auth password reset email to employee's email)
+document.getElementById('resetPasswordBtn')?.addEventListener('click', async () => {
+    const btn = document.getElementById('resetPasswordBtn');
+    if (!btn) return;
+    const emailFromDataset = btn.dataset.email;
+    const emailFromInput = (document.getElementById('empUsername')?.value || '').trim();
+    const email = emailFromDataset || emailFromInput;
+
+    if (!email) {
+        showNotification('No email is set for this employee. Please add or update the username (email) first.', 'error');
+        return;
+    }
+
+    try {
+        btn.disabled = true;
+        await sendPasswordResetEmail(auth, email);
+        showNotification(`Password reset email sent to ${email}`, 'success');
+    } catch (error) {
+        console.error('Error sending password reset email:', error);
+        const msg = error?.message || String(error);
+        showNotification('Failed to send password reset email: ' + msg, 'error');
+    } finally {
+        btn.disabled = false;
+    }
+});
